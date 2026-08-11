@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.idea/
+
+# Local Home Assistant test instance (docker compose)
+ha_config/
+docker-compose.override.yml

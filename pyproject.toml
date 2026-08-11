@@ -1,0 +1,30 @@
+# This repo ships a Home Assistant custom integration, not a Python package —
+# there is no [project] table and nothing here is built or published. The file
+# exists to configure the dev tooling that CI runs.
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+# Explicit rather than relying on ruff's defaults, so CI can't drift when ruff
+# changes what it selects out of the box.
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "PIE", "RET", "RUF"]
+ignore = [
+    "E501",    # line length is enforced by the formatter, not the linter
+    "RET504",  # assigning before return is often clearer with a type annotation
+    # Typographic characters (− – × ° →) are used deliberately in comments and
+    # user-facing strings.
+    "RUF001", "RUF002", "RUF003",
+]
+
+[tool.mypy]
+# No python_version pin: it must match the interpreter Home Assistant is
+# installed under, or mypy fails parsing HA's own source. CI sets the version
+# via setup-python instead.
+strict = true
+# Home Assistant ships partial type information; its own CI runs mypy in a
+# similar configuration. Without this, every `homeassistant.*` import that lacks
+# a stub would fail the run for reasons outside this repo's control.
+follow_imports = "silent"
+ignore_missing_imports = true

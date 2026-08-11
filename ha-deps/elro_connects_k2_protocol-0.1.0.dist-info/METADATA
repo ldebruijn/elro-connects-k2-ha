@@ -1,0 +1,5 @@
+Metadata-Version: 2.1
+Name: elro-connects-k2-protocol
+Version: 0.1.0
+Summary: Local UDP protocol library for ELRO Connects K2 (SF50GA) gateways
+Requires-Python: >=3.12

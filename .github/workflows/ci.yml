@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+env:
+  # The protocol library this integration is built on. Until it is published to
+  # PyPI, CI installs it straight from git — manifest.json's pinned requirement
+  # cannot be resolved otherwise. Switch this to a plain
+  # `elro-connects-k2-protocol==<version>` once the package ships.
+  PROTOCOL_LIB: "git+https://github.com/ldebruijn/elro-connects-k2-protocol.git@main"
+
+jobs:
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Home Assistant's own integration validator: manifest schema, required
+      # keys, brands, dependency ordering, services.yaml, translations.
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install ruff
+      # `ruff format` is not enforced here, to stay consistent with the protocol
+      # repo. Linting is.
+      - name: Lint
+        run: ruff check --output-format=github .
+
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      # Both halves are needed for a meaningful run: without homeassistant every
+      # `homeassistant.*` symbol is untyped, and without the protocol library
+      # every SubDevice field degrades to Any and the strict errors that matter
+      # silently stop being reported.
+      - name: Install Home Assistant and the protocol library
+        run: |
+          pip install -r requirements-dev.txt
+          pip install "$PROTOCOL_LIB"
+
+      - name: Type check
+        run: mypy custom_components/
+
+  validate-json:
+    name: Validate JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Parse every JSON file
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys
+          bad = []
+          for p in pathlib.Path().rglob("*.json"):
+              if ".git" in p.parts:
+                  continue
+              try:
+                  json.loads(p.read_text())
+              except Exception as exc:
+                  bad.append(f"{p}: {exc}")
+          print("\n".join(bad) if bad else "all JSON parsed")
+          sys.exit(1 if bad else 0)
+          PY
+
+      # manifest.json's requirement pin, and the stand-in install metadata used
+      # by the local dev override, must agree or Home Assistant's requirement
+      # check fails at integration setup.
+      - name: Check version pin matches ha-deps metadata
+        run: |
+          python - <<'PY'
+          import json, pathlib, re, sys
+          manifest = json.loads(pathlib.Path(
+              "custom_components/elro_connects_k2/manifest.json").read_text())
+          pins = [r for r in manifest["requirements"]
+                  if r.startswith("elro-connects-k2-protocol")]
+          if len(pins) != 1:
+              sys.exit(f"expected exactly one protocol requirement, got {pins}")
+          pinned = pins[0].split("==")[1]
+
+          metas = list(pathlib.Path("ha-deps").glob("*.dist-info/METADATA"))
+          if len(metas) != 1:
+              sys.exit(f"expected exactly one ha-deps METADATA, got {metas}")
+          meta = metas[0].read_text()
+          version = re.search(r"^Version: (.+)$", meta, re.M).group(1).strip()
+
+          if version != pinned:
+              sys.exit(f"manifest pins {pinned} but ha-deps METADATA says {version}")
+          if f"-{pinned}.dist-info" not in str(metas[0]):
+              sys.exit(f"ha-deps directory name does not carry version {pinned}")
+          print(f"version pin consistent: {pinned}")
+          PY

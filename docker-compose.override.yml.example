@@ -1,0 +1,21 @@
+# Optional: develop the integration and the protocol library side by side.
+#
+# Copy to docker-compose.override.yml (gitignored) and adjust PROTOCOL_REPO
+# below to wherever you checked out elro-connects-k2-protocol. Docker Compose
+# merges override files automatically, so `docker compose up -d` picks this up.
+#
+# With this in place the library is *not* pip-installed — it is bind-mounted
+# from your working tree, so edits take effect on an HA restart rather than a
+# reinstall. The .dist-info mount supplies the install metadata HA's manifest
+# requirement check looks for; see ha-deps/README.md.
+
+services:
+  homeassistant:
+    volumes:
+      # ── PROTOCOL_REPO: path to your elro-connects-k2-protocol checkout ──
+      - ../elro-connects-k2-protocol/elro_connects_k2_protocol:/workspace/elro_connects_k2_protocol
+      - ./ha-deps/elro_connects_k2_protocol-0.1.0.dist-info:/workspace/elro_connects_k2_protocol-0.1.0.dist-info
+    environment:
+      # Puts /workspace on sys.path before HA starts, so the integration's plain
+      # `import elro_connects_k2_protocol` resolves to the mounted source.
+      - PYTHONPATH=/workspace

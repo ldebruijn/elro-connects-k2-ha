@@ -1,0 +1,49 @@
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: elro-k2-ha-test
+    ports:
+      - "8123:8123"
+      # Expose the UDP port the integration binds so the K2 can reach it.
+      # On macOS this still won't work for K2→HA push events because Docker
+      # NATs outbound traffic and the K2 would reply to the wrong IP.
+      # See the networking note below.
+      - "1025:1025/udp"
+    volumes:
+      # Persistent HA config (database, .storage, etc.)
+      - ./ha_config:/config
+      # Live-reload: edits to the integration take effect on HA restart.
+      - ./custom_components/elro_connects_k2:/config/custom_components/elro_connects_k2
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Amsterdam
+
+# ── the protocol library ──────────────────────────────────────────────────────
+#
+# manifest.json declares `elro-connects-k2-protocol==0.1.0` as a requirement, so
+# Home Assistant pip-installs it into /config/deps on first setup. Nothing extra
+# is needed here once that package is on PyPI.
+#
+# Until it is published, install it once by hand after `docker compose up -d`:
+#
+#   docker compose exec homeassistant \
+#     pip install --target /config/deps \
+#     git+https://github.com/ldebruijn/elro-connects-k2-protocol.git@v0.1.0
+#
+# To develop both repos at once — live-editing library source without
+# reinstalling — copy docker-compose.override.yml.example to
+# docker-compose.override.yml and point it at your local protocol checkout.
+#
+# ── networking note ───────────────────────────────────────────────────────────
+#
+# macOS (Docker Desktop): uses bridged networking. Broadcast IOT_KEY? packets
+# sent from inside the container won't reach LAN devices. Use the manual IP
+# entry in the config flow: Settings → Integrations → ELRO Connects K2 → add,
+# then skip auto-discovery and enter 192.168.1.50 / ST_1234567890 directly.
+#
+# Linux: replace the "ports" block above with:
+#
+#   network_mode: host
+#
+# Host networking lets the container bind UDP 1025 on the real interface, so
+# broadcast discovery and K2 push events both work without extra configuration.

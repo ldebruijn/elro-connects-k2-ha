@@ -1,0 +1,65 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "title": "ELRO Connects K2 options",
+        "data": {
+          "debug_logging": "Enable debug logging for the ELRO Connects K2 protocol library"
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up ELRO Connects K2",
+        "description": "Searching for an ELRO Connects K2 gateway on the local network..."
+      },
+      "confirm": {
+        "title": "ELRO Connects K2 found",
+        "description": "Found K2 gateway at {host} (ID: {device_name}). Add it to Home Assistant?"
+      },
+      "manual": {
+        "title": "Manual setup",
+        "description": "No K2 gateway was found automatically. Enter the details manually.",
+        "data": {
+          "host": "Gateway IP address",
+          "device_name": "Device name (e.g. ST_1234567890)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the K2 gateway. Check the IP address and ensure nothing else is using UDP port 1025.",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This K2 gateway is already configured."
+    }
+  },
+  "services": {
+    "start_pairing": {
+      "name": "Add device",
+      "description": "Puts the K2 gateway into pairing mode and waits for a new detector to join. Trigger the detector's pairing action (usually by holding its test button) while this is running. The detector type does not need to be selected - the gateway accepts whichever device joins.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Which K2 gateway to pair with. Can be left empty when only one is set up."
+        },
+        "timeout": {
+          "name": "Timeout",
+          "description": "How long to keep pairing mode open while waiting for a detector to join."
+        }
+      }
+    },
+    "cancel_pairing": {
+      "name": "Cancel adding device",
+      "description": "Closes an open pairing window on the K2 gateway before it times out.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Which K2 gateway to stop pairing on. Can be left empty when only one is set up."
+        }
+      }
+    }
+  }
+}
