@@ -1,7 +1,7 @@
 {
   "domain": "elro_connects_k2",
   "name": "ELRO Connects K2",
-ff  "codeowners": [],
+  "codeowners": [],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/ldebruijn/elro-connects-k2-ha",
