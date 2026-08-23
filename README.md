@@ -101,6 +101,53 @@ pressing "Sync now", which re-runs the full sync including names).
 
 ---
 
+## Troubleshooting
+
+### No devices appear in Home Assistant
+
+The hub is added, setup reports no error, and no entities show up. The integration raises a
+notification in **Settings → Repairs** naming which of two things it is seeing; the card
+clears itself as soon as a sync returns a device.
+
+| Notification | What the hub is doing | Where to look |
+| --- | --- | --- |
+| *…is not responding* | Never acknowledged an activation ping, so it drops every command sent to it | Device name, IP address, UDP port 1025, the hub's own outbound traffic |
+| *…reports no devices* | Answering normally, with an empty device list | Pairing, then the hub's own outbound traffic |
+
+In roughly the order worth checking:
+
+- **The device name must match the hub exactly.** The K2 arms its session only for a request
+  that names it character for character (`ST_` prefix included). Until it does, it ignores
+  commands without a word, which looks identical to an empty hub.
+- **UDP port 1025 must be free and reachable in both directions** on the Home Assistant host.
+  Nothing else may hold it — not a second copy of this integration, and not the protocol
+  library's CLI or probe running on the same machine.
+- **Home Assistant needs a direct path to the hub.** In a bridged-network container the hub's
+  replies never come back; use host networking.
+- **How you firewall the hub matters more than whether you do.** The hub reaches out to
+  Alibaba Cloud (`aliyun.com`) on its own account, and while that has nothing to do with local
+  control, the *manner* of blocking it does. A rule that fails fast — DNS blackhole, `REJECT`,
+  ICMP unreachable — lets the hub give up immediately and carry on. A rule that silently
+  **drops** the traffic, which is what country-block rules normally do, leaves the hub
+  retransmitting until its own TCP timeout, and while it is stalled like that it stops
+  answering local commands. It recovers on its own once that attempt times out, so the
+  symptom is intermittent — a sync landing inside the window comes back empty while the next
+  one works. One user's missing devices were exactly this. **You do not need to give the hub
+  internet access — block it with a reject rule rather than a drop rule.**
+- **Check the detectors are actually paired**, in range, and not flat: a sub-device the hub
+  has lost contact with is simply left out of the list.
+
+Switch on **debug logging** in the integration options (Settings → Devices & Services → ELRO
+Connects K2 → Configure) to see every frame. The line to look for is `Gateway … activated in
+<n> ms`, which means the hub is accepting commands; `did not acknowledge any of 3 activation
+pings` instead means it is ignoring Home Assistant.
+
+Background on the activation handshake and the call-home stall is in the protocol repo:
+[the activation gate](https://github.com/ldebruijn/elro-connects-k2-protocol/blob/main/docs/protocol_reference.md#the-activation-gate)
+and [the hub's call home](https://github.com/ldebruijn/elro-connects-k2-protocol/blob/main/docs/research.md#the-hubs-call-home-and-why-how-you-block-it-matters).
+
+---
+
 ## Development
 
 ### Full local test setup, with no hardware
@@ -216,7 +263,7 @@ start:
 ```bash
 docker compose exec homeassistant \
   pip install --target /config/deps \
-  git+https://github.com/ldebruijn/elro-connects-k2-protocol.git@v0.1.1
+  git+https://github.com/ldebruijn/elro-connects-k2-protocol.git@v0.1.2
 ```
 
 ### Lint and type checking
@@ -240,4 +287,4 @@ CI additionally runs hassfest, HACS validation, JSON parsing, and a check that
 ### Version bumps
 
 `manifest.json`'s requirement pin, the protocol repo's `pyproject.toml` version, and
-`ha-deps/elro_connects_k2_protocol-0.1.1.dist-info/METADATA` must all agree.
+`ha-deps/elro_connects_k2_protocol-0.1.2.dist-info/METADATA` must all agree.

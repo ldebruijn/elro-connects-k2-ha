@@ -20,7 +20,7 @@ services:
 
 # ── the protocol library ──────────────────────────────────────────────────────
 #
-# manifest.json declares `elro-connects-k2-protocol==0.1.1` as a requirement, so
+# manifest.json declares `elro-connects-k2-protocol==0.1.2` as a requirement, so
 # Home Assistant pip-installs it into /config/deps on first setup. Nothing extra
 # is needed here once that package is on PyPI.
 #
@@ -28,7 +28,7 @@ services:
 #
 #   docker compose exec homeassistant \
 #     pip install --target /config/deps \
-#     git+https://github.com/ldebruijn/elro-connects-k2-protocol.git@v0.1.1
+#     git+https://github.com/ldebruijn/elro-connects-k2-protocol.git@v0.1.2
 #
 # To develop both repos at once — live-editing library source without
 # reinstalling — copy docker-compose.override.yml.example to
