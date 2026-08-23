@@ -18,8 +18,11 @@ import logging
 
 from elro_connects_k2_protocol.gateway import K2Gateway
 from elro_connects_k2_protocol.models import SubDevice, UpdateSource
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .issues import async_clear_hub_issue, async_report_hub_issue
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,13 +30,20 @@ _LOGGER = logging.getLogger(__name__)
 class ElroK2Coordinator(DataUpdateCoordinator[dict[int, SubDevice]]):
     """Coordinator that owns the K2Gateway instance and fans out updates to entities."""
 
-    def __init__(self, hass: HomeAssistant, gateway: K2Gateway) -> None:
+    def __init__(
+        self, hass: HomeAssistant, entry: ConfigEntry, gateway: K2Gateway
+    ) -> None:
         super().__init__(
             hass,
             _LOGGER,
             name="ELRO Connects K2",
+            config_entry=entry,
             update_interval=None,  # push-driven; no automatic polling
         )
+        # Kept under our own name rather than reading self.config_entry back:
+        # the base class types that as optional, and every use here needs a
+        # ConfigEntry to key the repair issue by.
+        self.entry = entry
         self.gateway = gateway
 
     async def _async_setup(self) -> None:
@@ -67,6 +77,19 @@ class ElroK2Coordinator(DataUpdateCoordinator[dict[int, SubDevice]]):
         """
         activated = await self.gateway.activate()
         devices = await self.gateway.sync_devices()
+
+        # "The hub was added and no entities appeared" is a report this integration
+        # received and until now the reason was visible only in a debug log.
+        # Surface it in Settings > Repairs instead, splitting on
+        # whether the hub acked: un-acked means it is ignoring us, acked means
+        # it answered with an empty installation. Raised on the first empty
+        # result rather than after a run of them, because this coordinator only
+        # refreshes on startup and on the Sync now button — debouncing would
+        # mean the issue never appeared unless the user pressed Sync twice.
+        if not devices:
+            async_report_hub_issue(self.hass, self.entry, activated=activated)
+        else:
+            async_clear_hub_issue(self.hass, self.entry)
 
         # An empty result is only believable when the hub acked activation: it
         # is then armed and genuinely reports no paired sub-devices, which is

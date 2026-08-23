@@ -20,6 +20,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import ElroK2Coordinator
+from .issues import async_clear_hub_issue, async_report_hub_issue
 from .services import async_register_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,13 +41,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ip=entry.data[CONF_HOST],
         device_name=entry.data[CONF_DEVICE_NAME],
     )
-    coordinator = ElroK2Coordinator(hass, gateway)
+    coordinator = ElroK2Coordinator(hass, entry, gateway)
 
     try:
         await coordinator.async_config_entry_first_refresh()
     except Exception:
-        _LOGGER.exception("Failed to connect to K2 gateway at %s", entry.data[CONF_HOST])
-        return False
+        # Debug rather than exception(): Home Assistant announces the retry
+        # itself, and a hub that is only temporarily unreachable should not put
+        # a traceback in the log every time setup comes round again.
+        _LOGGER.debug(
+            "First refresh failed for K2 gateway at %s",
+            entry.data[CONF_HOST],
+            exc_info=True,
+        )
+        # A retrying entry shows nothing but "Retrying setup" in the UI, which
+        # is exactly the missing feedback the repair issue exists to supply. The
+        # hub produced nothing usable, so it counts as un-armed whatever the
+        # cause was.
+        async_report_hub_issue(hass, entry, activated=False)
+        # The coordinator's _async_setup has already bound UDP 1025. Leaving
+        # that socket open would have the next retry bind a second one to the
+        # same port, and an inbound unicast reply reaches only one of them — so
+        # the retry could never succeed.
+        await gateway.disconnect()
+        # Propagate instead of returning False: async_config_entry_first_refresh
+        # raises ConfigEntryNotReady, which Home Assistant answers with its own
+        # progressive retry. Returning False marks the entry permanently failed,
+        # so a hub that was merely stalled — a call home blocked by a silent
+        # firewall drop takes tens of seconds to time out — would stay down
+        # until someone reloaded the integration by hand.
+        raise
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
@@ -97,3 +121,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Withdraw this hub's repair issue when the hub is deleted.
+
+    Not done on unload: a reload unloads too, and the issue should stay up
+    across one rather than flickering away and coming straight back.
+    """
+    async_clear_hub_issue(hass, entry)
