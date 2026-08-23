@@ -14,7 +14,7 @@ It is *not* enough for the integration's `manifest.json`, which declares a real
 requirement:
 
 ```json
-"requirements": ["elro-connects-k2-protocol==0.1.0"]
+"requirements": ["elro-connects-k2-protocol==0.1.1"]
 ```
 
 At setup HA calls `homeassistant.util.package.is_installed()`, which resolves

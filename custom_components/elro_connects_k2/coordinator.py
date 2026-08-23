@@ -19,7 +19,7 @@ import logging
 from elro_connects_k2_protocol.gateway import K2Gateway
 from elro_connects_k2_protocol.models import SubDevice, UpdateSource
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,5 +65,21 @@ class ElroK2Coordinator(DataUpdateCoordinator[dict[int, SubDevice]]):
         on manual refresh (Sync now button). Re-activates the session first in
         case the K2 stopped responding after a keepalive gap.
         """
-        await self.gateway.activate()
-        return await self.gateway.sync_devices()
+        activated = await self.gateway.activate()
+        devices = await self.gateway.sync_devices()
+
+        # An empty result is only believable when the hub acked activation: it
+        # is then armed and genuinely reports no paired sub-devices, which is
+        # the normal state of a new hub. Without that ack the hub may never
+        # have armed, and an unarmed hub drops CMD_CODE 54 silently — so "no
+        # devices" is indistinguishable from "not listening". Publishing that
+        # as data would mark every existing entity unavailable and look like
+        # the detectors vanished; failing the update says what actually
+        # happened and keeps the last known state.
+        if not activated and not devices:
+            raise UpdateFailed(
+                f"Gateway {self.gateway.ip} never acknowledged activation and returned "
+                "no devices; it is unreachable or the configured device name is wrong"
+            )
+
+        return devices

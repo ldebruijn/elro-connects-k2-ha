@@ -216,7 +216,7 @@ start:
 ```bash
 docker compose exec homeassistant \
   pip install --target /config/deps \
-  git+https://github.com/ldebruijn/elro-connects-k2-protocol.git@v0.1.0
+  git+https://github.com/ldebruijn/elro-connects-k2-protocol.git@v0.1.1
 ```
 
 ### Lint and type checking
@@ -240,4 +240,4 @@ CI additionally runs hassfest, HACS validation, JSON parsing, and a check that
 ### Version bumps
 
 `manifest.json`'s requirement pin, the protocol repo's `pyproject.toml` version, and
-`ha-deps/elro_connects_k2_protocol-0.1.0.dist-info/METADATA` must all agree.
+`ha-deps/elro_connects_k2_protocol-0.1.1.dist-info/METADATA` must all agree.
