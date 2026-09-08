@@ -45,6 +45,10 @@ class ElroK2Coordinator(DataUpdateCoordinator[dict[int, SubDevice]]):
         # ConfigEntry to key the repair issue by.
         self.entry = entry
         self.gateway = gateway
+        # Device-registry id of the gateway device, filled in by
+        # async_setup_entry once that device is registered and before any
+        # platform is forwarded. Child devices reference it as via_device_id.
+        self.hub_device_id = ""
 
     async def _async_setup(self) -> None:
         """Register the push callback and open the UDP socket.

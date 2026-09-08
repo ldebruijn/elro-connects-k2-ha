@@ -14,6 +14,9 @@ wire protocol reference and the reverse-engineering notes.
 
 ## Installation
 
+Requires Home Assistant **2026.8** or newer — child devices are linked to the gateway
+with `via_device_id`, which older releases do not accept.
+
 ### HACS (custom repository)
 
 1. HACS → Integrations → ⋮ → Custom repositories

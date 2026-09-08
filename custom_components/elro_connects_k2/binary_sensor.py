@@ -9,19 +9,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from elro_connects_k2_protocol.models import AlarmState, DeviceCapability, SubDevice
+from elro_connects_k2_protocol.models import AlarmState, DeviceCapability
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import ElroK2Coordinator
+from .entity import sub_device_info
 
 _DEVICE_CLASS_MAP: dict[str, BinarySensorDeviceClass] = {
     "smoke": BinarySensorDeviceClass.SMOKE,
@@ -74,16 +74,6 @@ async def async_setup_entry(
     entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
 
 
-def _device_info(gateway_name: str, sub_id: int, device: SubDevice) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, f"{gateway_name}_{sub_id}")},
-        name=f"{device.profile.name} {sub_id}",
-        manufacturer="ELRO Connects",
-        model=", ".join(device.profile.model_hints) or device.device_type,
-        via_device=(DOMAIN, gateway_name),
-    )
-
-
 class ElroK2AlarmSensor(CoordinatorEntity[ElroK2Coordinator], BinarySensorEntity):
     """Binary sensor for a single hazard capability (smoke, CO, gas, heat, water)."""
 
@@ -102,9 +92,7 @@ class ElroK2AlarmSensor(CoordinatorEntity[ElroK2Coordinator], BinarySensorEntity
         self._attr_unique_id = f"{gateway_name}_{sub_id}_{cap.key}"
         self._attr_name = cap.label
         self._attr_device_class = _DEVICE_CLASS_MAP.get(cap.device_class)
-        self._attr_device_info = _device_info(
-            gateway_name, sub_id, coordinator.data[sub_id]
-        )
+        self._attr_device_info = sub_device_info(coordinator, sub_id, coordinator.data[sub_id])
 
     @property
     def is_on(self) -> bool | None:
@@ -146,9 +134,7 @@ class ElroK2FaultSensor(CoordinatorEntity[ElroK2Coordinator], BinarySensorEntity
         self._sub_id = sub_id
         gateway_name = coordinator.gateway.device_name
         self._attr_unique_id = f"{gateway_name}_{sub_id}_fault"
-        self._attr_device_info = _device_info(
-            gateway_name, sub_id, coordinator.data[sub_id]
-        )
+        self._attr_device_info = sub_device_info(coordinator, sub_id, coordinator.data[sub_id])
 
     @property
     def is_on(self) -> bool | None:

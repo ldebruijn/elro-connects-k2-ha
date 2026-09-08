@@ -18,6 +18,7 @@ new parse path, or a device-type entry, that change belongs in the library.
 custom_components/elro_connects_k2/
   __init__.py      Setup/unload, debug log level wiring
   coordinator.py   DataUpdateCoordinator wrapping K2Gateway; push callbacks
+  entity.py        Shared DeviceInfo builders (gateway + sub-devices)
   config_flow.py   Discovery + manual IP entry
   binary_sensor.py Alarm entities (smoke, CO, gas, heat, moisture) + fault
   sensor.py        Battery, signal, CO2/temp/humidity

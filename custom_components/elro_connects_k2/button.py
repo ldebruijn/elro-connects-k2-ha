@@ -17,17 +17,16 @@ also callable from automations via ``button.press``.
 
 from __future__ import annotations
 
-from elro_connects_k2_protocol.models import SubDevice
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import ElroK2Coordinator
+from .entity import gateway_device_info, sub_device_info
 
 
 async def async_setup_entry(
@@ -63,16 +62,6 @@ async def async_setup_entry(
     entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
 
 
-def _device_info(gateway_name: str, sub_id: int, device: SubDevice) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, f"{gateway_name}_{sub_id}")},
-        name=f"{device.profile.name} {sub_id}",
-        manufacturer="ELRO Connects",
-        model=", ".join(device.profile.model_hints) or device.device_type,
-        via_device=(DOMAIN, gateway_name),
-    )
-
-
 class ElroK2SyncButton(ButtonEntity):
     """Button that triggers an on-demand CMD_CODE 54 sync."""
 
@@ -84,12 +73,7 @@ class ElroK2SyncButton(ButtonEntity):
         self._coordinator = coordinator
         gateway_name = coordinator.gateway.device_name
         self._attr_unique_id = f"{gateway_name}_sync_now"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, gateway_name)},
-            name=f"ELRO Connects K2 Gateway ({gateway_name})",
-            manufacturer="ELRO Connects",
-            model="K2 (SF50GA)",
-        )
+        self._attr_device_info = gateway_device_info(gateway_name)
 
     async def async_press(self) -> None:
         await self._coordinator.async_refresh()
@@ -118,9 +102,7 @@ class ElroK2ActionButton(CoordinatorEntity[ElroK2Coordinator], ButtonEntity):
         gateway_name = coordinator.gateway.device_name
         self._attr_unique_id = f"{gateway_name}_{sub_id}_{label.lower()}"
         self._attr_name = label
-        self._attr_device_info = _device_info(
-            gateway_name, sub_id, coordinator.data[sub_id]
-        )
+        self._attr_device_info = sub_device_info(coordinator, sub_id, coordinator.data[sub_id])
 
     async def async_press(self) -> None:
         self.coordinator.gateway.send_device_action(self._sub_id, self._action)

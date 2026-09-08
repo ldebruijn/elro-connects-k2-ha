@@ -19,12 +19,12 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import ElroK2Coordinator
+from .entity import sub_device_info
 
 _SENSOR_DEVICE_CLASS_MAP: dict[str, SensorDeviceClass] = {
     "battery": SensorDeviceClass.BATTERY,
@@ -79,16 +79,6 @@ async def async_setup_entry(
     entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
 
 
-def _device_info(gateway_name: str, sub_id: int, device: SubDevice) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, f"{gateway_name}_{sub_id}")},
-        name=f"{device.profile.name} {sub_id}",
-        manufacturer="ELRO Connects",
-        model=", ".join(device.profile.model_hints) or device.device_type,
-        via_device=(DOMAIN, gateway_name),
-    )
-
-
 class ElroK2Sensor(CoordinatorEntity[ElroK2Coordinator], SensorEntity):
     """Sensor entity for a single numeric or enum capability."""
 
@@ -107,9 +97,7 @@ class ElroK2Sensor(CoordinatorEntity[ElroK2Coordinator], SensorEntity):
         self._attr_unique_id = f"{gateway_name}_{sub_id}_{cap.key}"
         self._attr_name = cap.label
         self._attr_device_class = _SENSOR_DEVICE_CLASS_MAP.get(cap.device_class)
-        self._attr_device_info = _device_info(
-            gateway_name, sub_id, coordinator.data[sub_id]
-        )
+        self._attr_device_info = sub_device_info(coordinator, sub_id, coordinator.data[sub_id])
         if cap.key in _DIAGNOSTIC_KEYS:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 

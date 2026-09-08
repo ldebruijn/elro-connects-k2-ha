@@ -20,6 +20,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import ElroK2Coordinator
+from .entity import GATEWAY_MODEL
 from .issues import async_clear_hub_issue, async_report_hub_issue
 from .services import async_register_services
 
@@ -74,15 +75,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
-    # Register the hub device so child devices can resolve their via_device reference.
+    # Register the hub device before forwarding any platform: child devices link
+    # to it by device-registry id (via_device_id), which only exists once the hub
+    # entry itself has been created.
     device_registry = dr.async_get(hass)
-    device_registry.async_get_or_create(
+    hub_device = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.data[CONF_DEVICE_NAME])},
         name=entry.data[CONF_DEVICE_NAME],
         manufacturer="ELRO Connects",
-        model="K2 (SF50GA)",
+        model=GATEWAY_MODEL,
     )
+    coordinator.hub_device_id = hub_device.id
 
     # Session keepalive — send targeted IOT_KEY? every 60 s so the K2 keeps
     # accepting APP_SEND commands. This does NOT fetch state or update entities.
