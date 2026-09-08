@@ -13,15 +13,26 @@
     "step": {
       "user": {
         "title": "Set up ELRO Connects K2",
-        "description": "Searching for an ELRO Connects K2 gateway on the local network..."
+        "description": "Searching for ELRO Connects K2 gateways on the local network..."
+      },
+      "pick": {
+        "title": "Choose a gateway",
+        "description": "{count} ELRO Connects K2 gateways were found that are not set up yet. Each hub is a separate installation with its own detectors, so add them one at a time — run this again to add the next.",
+        "data": {
+          "device_name": "Gateway"
+        }
       },
       "confirm": {
         "title": "ELRO Connects K2 found",
-        "description": "Found K2 gateway at {host} (ID: {device_name}). Add it to Home Assistant?"
+        "description": "Found K2 gateway at {host} (ID: {device_name}). Add it to Home Assistant?",
+        "menu_options": {
+          "confirm_add": "Add this gateway",
+          "manual": "Enter a different gateway manually"
+        }
       },
       "manual": {
         "title": "Manual setup",
-        "description": "No K2 gateway was found automatically. Enter the details manually.",
+        "description": "Enter the gateway's IP address and device name. The device name is shown in the ELRO Connects app under connector › settings › Connector details › device name, and must match exactly — a hub called by the wrong name ignores Home Assistant completely.",
         "data": {
           "host": "Gateway IP address",
           "device_name": "Device name (e.g. ST_1234567890)"
@@ -29,7 +40,7 @@
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to the K2 gateway. Check the IP address and ensure nothing else is using UDP port 1025.",
+      "cannot_connect": "No K2 gateway at that address answered to that device name. Check both: the name must match the hub exactly, the hub must be reachable, and UDP port 1025 must be open in both directions.",
       "unknown": "Unexpected error"
     },
     "abort": {

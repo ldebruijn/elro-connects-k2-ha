@@ -59,10 +59,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # hub produced nothing usable, so it counts as un-armed whatever the
         # cause was.
         async_report_hub_issue(hass, entry, activated=False)
-        # The coordinator's _async_setup has already bound UDP 1025. Leaving
-        # that socket open would have the next retry bind a second one to the
-        # same port, and an inbound unicast reply reaches only one of them — so
-        # the retry could never succeed.
+        # Release this gateway's reference to the shared UDP socket. The socket
+        # itself stays bound as long as another hub still holds a reference, so
+        # a hub that fails setup no longer takes its neighbours down with it —
+        # which is exactly what happened while every gateway bound its own.
         await gateway.disconnect()
         # Propagate instead of returning False: async_config_entry_first_refresh
         # raises ConfigEntryNotReady, which Home Assistant answers with its own

@@ -33,6 +33,23 @@ The config flow discovers K2 gateways by UDP broadcast. If discovery finds nothi
 when HA runs in a bridged-network container — enter the gateway IP and device name manually.
 The device name looks like `ST_1234567890` and is visible in the app (connector > settings > Connector details > device name).
 
+### More than one hub
+
+K2 hubs do not mesh: a house with an outbuilding runs one hub per building, and each hub has
+its own detectors. Add them one at a time — run the config flow again and it offers whichever
+hubs answered the broadcast and are not set up yet. Every hub gets its own device in Home
+Assistant, with its detectors underneath it.
+
+Manual entry works for several hubs too, and mixes freely with discovery — add the hub on
+your own subnet from the broadcast, then run the flow again and choose **Enter a gateway
+manually** for one on another VLAN. Hand-entered details are checked against the hub before
+the entry is created, so a mistyped device name is rejected on the spot rather than producing
+an entry that loads and then does nothing.
+
+All the hubs share one UDP socket on port 1025 (the hub only ever talks to that port, so
+there is nothing to give a second one), and frames are routed to the right hub by the device
+name they carry. Nothing extra to configure.
+
 ## Entities created per sub-device
 
 Entity creation is driven entirely by `DeviceProfile.capabilities` — no hardcoded type checks.

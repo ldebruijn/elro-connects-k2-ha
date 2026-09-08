@@ -57,7 +57,9 @@ def _resolve_coordinator(hass: HomeAssistant, call: ServiceCall) -> ElroK2Coordi
     """Pick the gateway this call targets.
 
     ``config_entry_id`` may be omitted when there is exactly one gateway set up,
-    which is the normal case — a K2 covers a whole house.
+    which is the common case. Several are supported though: K2 hubs do not mesh,
+    so a house with an outbuilding runs one hub per building, each with its own
+    detectors.
     """
     coordinators: dict[str, ElroK2Coordinator] = hass.data.get(DOMAIN, {})
     entry_id = call.data.get(ATTR_CONFIG_ENTRY_ID)

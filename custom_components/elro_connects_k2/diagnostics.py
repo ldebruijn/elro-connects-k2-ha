@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from elro_connects_k2_protocol.transport import shared_socket_is_open
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -38,6 +39,14 @@ async def async_get_config_entry_diagnostics(
         "gateway": {
             "ip": gateway.ip,
             "device_name": gateway.device_name,
+        },
+        # Multi-hub setups share one UDP socket on port 1025, keyed by devID.
+        # A report where one hub sees nothing is nearly always a transport
+        # problem, so say up front how many hubs are loaded and whether the
+        # socket they share is actually bound.
+        "transport": {
+            "gateways_loaded": len(hass.data.get(DOMAIN, {})),
+            "shared_socket_open": shared_socket_is_open(),
         },
         "devices": devices_info,
     }
