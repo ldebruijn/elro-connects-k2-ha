@@ -55,7 +55,10 @@ host with `device_name = DEMO_DEVICE`, `host = 127.0.0.1`.
 - Follow Home Assistant integration conventions; `hassfest` and HACS validation run in CI.
 - User-visible strings go in `strings.json` + `translations/`, never inline.
 - Version coupling: `manifest.json`'s requirement pin, the protocol repo's `pyproject.toml`
-  version, and `ha-deps/…dist-info/METADATA` must all match, or HA's requirement check fails.
+  version, and `ha-deps/…dist-info/` — its directory name as well as its `METADATA` — must all
+  match, or HA's requirement check fails. The `.dist-info` bind mount in
+  `docker-compose.override.yml.example` names that directory too and is the one that gets
+  forgotten; it sat two versions stale before 0.2.1.
 - Device removal is deliberately unimplemented — it needs `CMD_CODE 4`, which is destructive
   and untested. Don't add it without hardware to verify against.
 - The `hacs.json` floor of **2026.3.0** is the release that added local `brand/` images, which
