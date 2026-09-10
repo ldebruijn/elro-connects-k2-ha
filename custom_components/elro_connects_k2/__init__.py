@@ -56,9 +56,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         # A retrying entry shows nothing but "Retrying setup" in the UI, which
         # is exactly the missing feedback the repair issue exists to supply. The
-        # hub produced nothing usable, so it counts as un-armed whatever the
-        # cause was.
-        async_report_hub_issue(hass, entry, activated=False)
+        # hub produced nothing usable and setup never got far enough to learn
+        # which of the three failure modes it was, so claim the least: not armed
+        # and not answering, which is the message that asks the user to check
+        # the things that are actually checkable from here.
+        async_report_hub_issue(hass, entry, activated=False, answering=False)
         # Release this gateway's reference to the shared UDP socket. The socket
         # itself stays bound as long as another hub still holds a reference, so
         # a hub that fails setup no longer takes its neighbours down with it —

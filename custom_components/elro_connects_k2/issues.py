@@ -23,7 +23,13 @@ from .const import CONF_DEVICE_NAME, DOMAIN
 # sent to it: unreachable, a device name that does not match, or stalled on its
 # own blocked call home.
 ISSUE_HUB_NOT_ARMED = "hub_not_armed"
-# The hub acknowledged and answered — it just listed no sub-devices.
+# The hub acknowledges pings but answers no command, not even the one that does
+# not touch its device table. It is reachable at the network level and not
+# processing commands — a hub-side or network-side fault rather than anything
+# misconfigured in Home Assistant.
+ISSUE_HUB_NOT_ANSWERING = "hub_not_answering"
+# The hub answered a command that does not depend on its device table, then
+# listed no sub-devices. That is a believable "nothing is paired here".
 ISSUE_HUB_NO_DEVICES = "hub_no_devices"
 
 LEARN_MORE_URL = (
@@ -47,22 +53,42 @@ def async_clear_hub_issue(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 def async_report_hub_issue(
-    hass: HomeAssistant, entry: ConfigEntry, *, activated: bool
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    *,
+    activated: bool,
+    answering: bool,
 ) -> None:
     """Raise the issue for a hub that produced no devices.
 
-    ``activated`` is the result of the activation handshake and is what splits
-    the two cases: a hub that never acked is ignoring Home Assistant entirely,
-    while one that acked and still listed nothing is answering normally and
-    reporting an empty installation.
+    Two independent signals, because one is not enough. ``activated`` says the
+    hub answered an activation ping, which happens at a layer below its command
+    dispatcher — so it proves the hub is powered and reachable and nothing more.
+    ``answering`` says it answered a gateway-info command, which does not read
+    the device table, and so is the only evidence that it is processing commands
+    at all.
+
+    That second signal is what makes "no devices" trustworthy. A K2 has no
+    "nothing to report" response — asked about a sub-device that does not exist,
+    a healthy hub replies with nothing whatsoever — so an empty status sync
+    looks exactly like a hub ignoring the request. Before gateway-info there was
+    no way to tell those apart, and this issue told users their installation was
+    empty when it might simply have been deaf.
     """
+    if not activated:
+        translation_key = ISSUE_HUB_NOT_ARMED
+    elif not answering:
+        translation_key = ISSUE_HUB_NOT_ANSWERING
+    else:
+        translation_key = ISSUE_HUB_NO_DEVICES
+
     ir.async_create_issue(
         hass,
         DOMAIN,
         _issue_id(entry),
         is_fixable=False,
         severity=ir.IssueSeverity.WARNING,
-        translation_key=ISSUE_HUB_NO_DEVICES if activated else ISSUE_HUB_NOT_ARMED,
+        translation_key=translation_key,
         translation_placeholders={
             "host": entry.data[CONF_HOST],
             "device_name": entry.data[CONF_DEVICE_NAME],
