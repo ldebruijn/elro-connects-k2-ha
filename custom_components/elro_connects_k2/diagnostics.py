@@ -35,10 +35,25 @@ async def async_get_config_entry_diagnostics(
             "humidity_pct": device.humidity_pct,
         }
 
+    # What the hub says about itself, from the CMD_CODE 12 exchange the
+    # coordinator runs before each sync. The SSID is the point: a hub on a
+    # different Wi-Fi network or VLAN from Home Assistant is a leading cause of
+    # "it never answers", and this is the only place that fact comes from the
+    # hub rather than from the owner's description of their network.
+    # None means the hub answered no command on the last refresh, which is
+    # itself the most important line in the report.
+    info = coordinator.gateway_info
+
     return {
         "gateway": {
             "ip": gateway.ip,
             "device_name": gateway.device_name,
+            "answered_gateway_info": info is not None,
+            "ssid": info.ssid if info else None,
+            "room_id": info.room_id if info else None,
+            "sub_device_push": info.sub_device_push if info else None,
+            "raw_data_str1": info.raw_data_str1 if info else None,
+            "raw_data_str2": info.raw_data_str2 if info else None,
         },
         # Multi-hub setups share one UDP socket on port 1025, keyed by devID.
         # A report where one hub sees nothing is nearly always a transport

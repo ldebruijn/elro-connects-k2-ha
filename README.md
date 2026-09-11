@@ -123,13 +123,21 @@ pressing "Sync now", which re-runs the full sync including names).
 ### No devices appear in Home Assistant
 
 The hub is added, setup reports no error, and no entities show up. The integration raises a
-notification in **Settings → Repairs** naming which of two things it is seeing; the card
+notification in **Settings → Repairs** naming which of three things it is seeing; the card
 clears itself as soon as a sync returns a device.
 
 | Notification | What the hub is doing | Where to look |
 | --- | --- | --- |
-| *…is not responding* | Never acknowledged an activation ping, so it drops every command sent to it | Device name, IP address, UDP port 1025, the hub's own outbound traffic |
-| *…reports no devices* | Answering normally, with an empty device list | Pairing, then the hub's own outbound traffic |
+| *…is not responding* | Never acknowledged an activation ping, so it drops every command sent to it | Device name, IP address, UDP port 1025 |
+| *…is not answering commands* | Replies to pings, but answers no command — including one that does not depend on its detector list | The hub itself, and the hub's own outbound traffic |
+| *…reports no devices* | Answering normally, and reporting that nothing is paired with it | Pairing |
+
+The middle case is worth explaining, because telling it apart from the last one takes a
+deliberate trick. A K2 has no "nothing to report" reply: asked about a detector that does not
+exist, a healthy hub answers with **silence**, exactly as a hub ignoring the request would. So
+an empty detector list on its own proves nothing. The integration also asks the hub for its own
+settings — a question that does not read the detector list at all — and it is the answer to
+*that* which separates "not listening" from "genuinely empty".
 
 In roughly the order worth checking:
 
@@ -155,9 +163,17 @@ In roughly the order worth checking:
   has lost contact with is simply left out of the list.
 
 Switch on **debug logging** in the integration options (Settings → Devices & Services → ELRO
-Connects K2 → Configure) to see every frame. The line to look for is `Gateway … activated in
-<n> ms`, which means the hub is accepting commands; `did not acknowledge any of 3 activation
-pings` instead means it is ignoring Home Assistant.
+Connects K2 → Configure) to see every frame. Two lines are worth finding:
+
+- `Gateway … activated in <n> ms` — the hub is reachable and armed. `did not acknowledge any of
+  3 activation pings` instead means it is ignoring Home Assistant entirely.
+- `Gateway … reports ssid=…` — the hub answered a command, so it is genuinely processing them.
+  The SSID is worth reading rather than skipping: it is what the hub actually joined, which is
+  not always the network you meant to put it on, and a hub on a different SSID or VLAN from
+  Home Assistant explains a great many "it never answers" reports.
+
+The **Download diagnostics** button on the integration page carries both of these plus the
+shared-socket state, and is the single most useful thing to attach to a bug report.
 
 Background on the activation handshake and the call-home stall is in the protocol repo:
 [the activation gate](https://github.com/ldebruijn/elro-connects-k2-protocol/blob/main/docs/protocol_reference.md#the-activation-gate)
